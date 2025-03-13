@@ -116,3 +116,25 @@ pathway_with_vital_signs_and_random_result:
       from: 50h
       to: 50h
   - discharge: {}
+
+
+demo_pathway:
+  persons:
+    main_patient:
+      first_name: "foo"
+      surname: "bar"
+  pathway:
+  - use_patient:
+      patient: main_patient
+  - admission:
+      loc: Renal
+      admit_reason: "Kidney hurts"
+  - result:
+      order_profile: UREA AND ELECTROLYTES
+  - autogenerate:
+      result:
+        order_profile: Vital Signs
+      from: 0m
+      to: 1m
+      every: 5s
+  - discharge: {}
