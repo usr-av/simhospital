@@ -253,6 +253,8 @@ Vital Signs:
       id: tt-0005-08
       coding_system: MDC
       ref_range: 10-50
+      value: 1
+      value_type: NM
     MDC_TEMP:
       id: tt-0005-09
       coding_system: MDC
