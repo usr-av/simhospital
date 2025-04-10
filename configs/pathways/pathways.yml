@@ -131,6 +131,7 @@ demo_pathway:
       admit_reason: "Kidney hurts"
   - result:
       order_profile: UREA AND ELECTROLYTES
+      trigger_event: R32
   - autogenerate:
       result:
         order_profile: Vital Signs
