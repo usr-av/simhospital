@@ -1,115 +1,114 @@
-# Fork-ahead cherry-pick report (vs `google/simhospital`)
-
-This repo is a local clone of Simulated Hospital with:
+# Fork cherry-pick report (vs `google/simhospital`)
 
 - `origin`: `usr-av/simhospital`
 - `upstream`: `google/simhospital`
+- Last full scan: **2026-04-25**
 
-Current finding: **`usr-av/simhospital` is not ahead of `google/simhospital`** (no additional commits on `origin/master` vs `upstream/master`).
+---
 
-## Forks ahead of `google/simhospital`
-
-Scan scope: top recently-updated / starred forks (to keep API calls reasonable).
-
-- **`dallen-statrad/simhospital`**: ahead by **74**
-- **`karthiknukala/simhospital`**: ahead by **4**
-- **`webamboos/simhospital`**: ahead by **3**
-- **`Health-Tech-Innovators/simhospital`**: ahead by **2**
-- **`DinhLucent/simhospital`**: ahead by **1**
-
-## Recommended cherry-picks (capability-focused)
-
-### 1) Add a basic “clinical benchmark / validation” hook
-
-Fork: `DinhLucent/simhospital` (ahead by 1)
-
-- **Why it advances capability**: introduces a small “benchmark/validator” surface that can be used for regression checks on generated output (useful before/after pathway/config changes).
-- **Risk**: low-to-medium (new package + doc file; should not affect simulator runtime unless wired in).
-
-Cherry-pick candidate:
-
-- `36a5f2e38aeba96afd17950262d1c2f28f2e61c7` — “feat: add clinical benchmark framework and project intelligence”
-  - touches: `pkg/benchmarks/validator.go`, `PROJECT_INTELLIGENCE.md`
-
-### 2) Improve generated content realism (order profile / vitals distinctions)
-
-Fork: `karthiknukala/simhospital` (ahead by 4)
-
-- **Why it advances capability**: small config-level enhancements can improve message realism without major code changes.
-- **Risk**: low (config-only + build convenience).
-
-Cherry-pick candidates:
-
-- `bc2be85f12ffa01cfc724e6db04b57965f12551d` — “generate resp rate value”
-  - touches: `configs/hl7_messages/order_profiles.yml`
-- `fd7529da1e69e356850afb6f3f63f82be6b0fa44` — “distinguish test from vitals”
-  - touches: `configs/pathways/pathways.yml`
-- `633e2229e8af5daaac3728cf387839531b396c02` — “test case”
-  - touches: `configs/pathways/pathways.yml`
-
-Optional / convenience only:
-
-- `f235a76ae699232233945a673458623e720d2927` — “Makefile”
-
-### 3) “Make it build again” type fixes (helps adoption, not core functionality)
-
-Fork: `webamboos/simhospital` (ahead by 3)
-
-- **Why it advances capability**: improves developer experience by reducing build friction (especially in modern toolchains/containers).
-- **Risk**: low, but still needs local validation.
-
-Cherry-pick candidates:
-
-- `3cde88daa137b828c297102edbe9124561fc0d16` — “fix: add missing dep”
-  - touches: `WORKSPACE`
-- `21ddcb5ca9aa62eaf9e4669d40c16a66cfa7a01a` — “fix build”
-  - touches: `.bazelversion`, `.devcontainer/devcontainer.json`, `.gitignore`
-
-Doc-only:
-
-- `52ffaa07bc091e6dd6c11311477ca48ac286d8ad` — “chore: update readme”
-
-## Not recommended to cherry-pick (as-is)
-
-### Large Bazel migration / Bzlmod stubs without a clean narrative
-
-Fork: `dallen-statrad/simhospital` (ahead by 74)
-
-The sampled commits are overwhelmingly Bazel/Bzlmod migration attempts, “stub” scaffolding, and repository URL tweaks. This might be valuable *if* you explicitly want to migrate off `WORKSPACE`, but it’s **not a focused capability lift** and would likely be time-consuming to reconcile.
-
-Examples (not exhaustive):
-
-- `4cc37ab4fe889a10c0cbf23795e58caa8666bd86` — “Create MODULE.bazel”
-- `4dfd5efec734012683eccaa11c01848f758f8577` — “Remove WORKSPACE (migrate to Bzlmod) …”
-- many “stub / stubs / more” commits with unclear intent and broad build-system surface area
-
-### Very large “add everything” build-file drop
-
-Fork: `Health-Tech-Innovators/simhospital` (ahead by 2)
-
-One commit adds a huge volume of Bazel build files and generated `bazel-*` outputs. This is hard to review/cherry-pick safely and is mostly build-system expansion rather than simulator capability.
-
-- `dd1c16ad3e47709392aca1f7d273f2ee459ccc41` — “Add Bazel configuration and build files …”
-- `1aa89ab86a08c835e0d205e67dad9f752a49a216` — includes `go.mod`/`go.sum` and output artifacts; likely not intended for upstreaming
-
-## How to apply (suggested workflow)
-
-1) Add the fork remote(s) you intend to cherry-pick from (example for `DinhLucent`):
+## How to resync (run this whenever upstream gets new commits)
 
 ```bash
-git remote add dinhlucent https://github.com/DinhLucent/simhospital
-git fetch dinhlucent
+# 1. Fetch latest upstream
+git fetch upstream
+
+# 2. Check if upstream moved
+git log master..upstream/master --oneline
+
+# 3. Rebase our work on top of upstream (preferred over merge)
+git rebase upstream/master
+
+# 4. Re-scan forks for new commits ahead of the new upstream HEAD
+gh api repos/google/simhospital/forks --paginate \
+  --jq '.[] | .full_name' | while read fork; do
+    result=$(gh api "repos/$fork/compare/google:master...${fork/:master/}:master" \
+      --jq '{ahead: .ahead_by}' 2>/dev/null)
+    ahead=$(echo "$result" | jq -r '.ahead')
+    [ "$ahead" -gt 0 ] 2>/dev/null && echo "$ahead  $fork"
+done | sort -rn
+
+# 5. For each fork worth examining:
+git remote add <alias> https://github.com/<fork>
+git fetch <alias> master --depth=10
+git log master..<alias>/master --oneline   # see what's new
+git show <sha> --stat                       # inspect a commit
+git cherry-pick <sha>                       # apply it
 ```
 
-2) Cherry-pick the commit(s):
+---
 
+## Full fork scan results (2026-04-25)
+
+101 forks total. 13 ahead of upstream. 4 private/404.
+
+| Fork | Ahead | Theme | Action |
+|------|-------|-------|--------|
+| `dallen-statrad` | 74 | Bazel → Bzlmod migration (no functional changes) | Skip |
+| `jordan83` | 29 | GCP bucket pathway loading, PD1 fixes, cloudbuild | Partial — see log |
+| `Arend-melissant` | 12 | Azure CosmosDB persistence backend | Skip (too niche, messy commits) |
+| `karthiknukala` | 4 | Resp rate config, vitals/test separation, demo pathway | **Applied** |
+| `alonbg` | 3 | JSON tags on HL7 schema structs | **Applied** |
+| `webamboos` | 3 | Bazel build fixes, README | Skip (Bazel-specific) |
+| `qining` | 3 | JSON/base64 file output, busy-wait runner "fix" | Skip — see notes |
+| `Health-Tech-Innovators` | 2 | Bulk Bazel build files, bulk ADT pathway | Skip (large blast radius) |
+| `henrydwright` | 2 | Local build fixes (Bazel) | Skip |
+| `chrisdutz` | 2 | Full Bazel → go build migration (100+ files touched) | Skip (we did this more cleanly) |
+| `DinhLucent` | 1 | Benchmark stub + doc file | Skip (low value) |
+| `bitcrshr` | 1 | Full Bazel removal + go modules | Skip (we did this more cleanly) |
+| `hyhossein` | 1 | `.DS_Store` commit | Skip (noise) |
+
+---
+
+## Applied cherry-picks
+
+### 2026-04-25
+
+| Commit | Fork | Message | Files | Notes |
+|--------|------|---------|-------|-------|
+| `633e222` | `karthiknukala` | test case | `configs/pathways/pathways.yml` | Adds `demo_pathway`: admission + vitals autogen + discharge |
+| `bc2be85` | `karthiknukala` | generate resp rate value | `configs/hl7_messages/order_profiles.yml` | Adds `value: 1` + `value_type: NM` to MDC_RESP_RATE; without this, resp rate produces no numeric value |
+| `fd7529d` | `karthiknukala` | distinguish test from vitals | `configs/pathways/pathways.yml` | Adds `trigger_event: R32` to the lab result step in demo_pathway, separating it from vitals |
+| `a0f7f9a` | `alonbg` | add json tags and omitempty | `pkg/hl7/schema.go` | Adds `json:"...,omitempty"` tags to all 1329 HL7 struct fields; enables clean JSON serialization of parsed HL7 |
+
+### Skipped with notes
+
+| Commit | Fork | Reason |
+|--------|------|--------|
+| `03b3b91` | `jordan83` | "Remove PD1 from A08" — already not present in our A08 (conflict resolved as empty, skipped) |
+| `d7a53ee` | `jordan83` | "Remove PD1 from A31" — initial file commit, conflicts completely |
+| `d5df48d` | `jordan83` | "GCP bucket pathway loading" — adds `pkg/files/files.go` + WORKSPACE Bazel deps; worth revisiting if GCP pathway loading is needed |
+| `aef62dc` | `qining` | "Do not wait for sleep" — replaces `time.After(sleepFor)` with `default` (busy-wait). 100% CPU usage; not safe for production |
+| `cbb383a` | `qining` | "JSON/base64 file output" — changes `fileSender` to emit `{"data":"<base64>"}` instead of raw HL7; breaks existing file output format |
+
+---
+
+## Forks worth revisiting
+
+### `jordan83/simhospital` — GCP pathway loading
+`d5df48d` adds `pkg/files/files.go` (155 lines) and `pkg/pathway/parser.go` changes to load pathway configs from GCS buckets. The WORKSPACE change is Bazel-specific and not needed. The Go code changes are self-contained.
+
+**To apply when needed:**
 ```bash
-git cherry-pick 36a5f2e38aeba96afd17950262d1c2f28f2e61c7
+git remote add jordan83 https://github.com/jordan83/simhospital
+git fetch jordan83 master
+# Review the diff first
+git show d5df48d -- pkg/files/files.go pkg/pathway/parser.go
+# Cherry-pick without WORKSPACE changes
+git cherry-pick d5df48d
+git restore WORKSPACE   # discard WORKSPACE hunk
 ```
 
-3) Repeat for other forks/commits you want.
+### `Arend-melissant/simhospital` — Azure CosmosDB persistence
+12 commits implementing CosmosDB as a state backend. Messy commit history but the capability (pluggable persistence) is interesting. Requires significant cleanup before applying.
 
-## Local note (your working tree)
+### `chrisdutz/simhospital` / `bitcrshr/simhospital` — Bazel removal
+Both forks do full Bazel→go migration. We did a cleaner version (go.mod without ripping out BUILD.bazel files). If BUILD.bazel maintenance becomes a burden, revisit `chrisdutz/19618ab5`.
 
-Your local working tree currently contains uncommitted/untracked build artifacts and module files (e.g. `MODULE.bazel`, `MODULE.bazel.lock`, `go.mod`, `go.sum`, `bazel-*` dirs). It’s best to clean/commit/ignore these before attempting cherry-picks so conflicts are easier to reason about.
+---
 
+## Known pre-existing issues (not introduced by cherry-picks)
+
+| Issue | Detail |
+|-------|--------|
+| `pkg/hl7/schemas/*` don't compile with `go build ./...` | Sub-packages in `pkg/hl7/schemas/210`, `220`, etc. declare `package hl7` but reference types from parent `pkg/hl7` package. This is a Bazel-only layout. Pre-existing; `go build ./cmd/...` compiles clean. |
+| `pkg/message/messages.go` A31 still has PD1 | Jordan83's A31 fix was an initial-file-level commit and couldn't be cherry-picked cleanly. A31 still includes PD1 segment in our repo. Fix manually if needed: remove the `pd1` block in `BuildUpdatePersonADTA31`. |
