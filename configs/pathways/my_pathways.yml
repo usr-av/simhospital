@@ -1,0 +1,26 @@
+admit_then_merge:
+  percentage_of_patients: 1
+  persons:
+    main_patient:
+      first_name: "John"
+      surname: "Doe"
+    temp_patient:
+      first_name: "Unknown"
+      surname: "Doe"
+  pathway:
+    - use_patient:
+        patient: temp_patient
+    - admission:
+        loc: Renal
+    - delay:
+        from: 0s
+        to: 0s
+    - use_patient:
+        patient: main_patient
+    - merge:
+        parent: main_patient
+        children: [temp_patient]
+    - delay:
+        from: 0s
+        to: 0s
+    - discharge: {}

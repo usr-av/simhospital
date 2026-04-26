@@ -111,5 +111,27 @@ docker run --rm -it -p 8000:8000 eu.gcr.io/simhospital-images/simhospital:latest
 
 Stop the simulator with Ctrl-C.
 
+## Install & run from source (macOS/Linux)
+
+This repository is built with **Bazel** (there is no `go.mod`), so commands like `go run ./cmd/simulator/...` will fail.
+
+### Prerequisites
+
+- Install Bazelisk (recommended Bazel launcher/version manager):
+
+```shell
+brew install bazelisk
+```
+
+### Run the simulator
+
+From the repo root:
+
+```shell
+bazelisk --bazel_version=5.4.1 run //cmd/simulator:simulator -- \
+  --pathways_dir=configs/pathways \
+  --pathway_names=admit_then_merge
+```
+
 See more instructions on how to
 [download & run Simulated Hospital](./docs/get-started.md).
